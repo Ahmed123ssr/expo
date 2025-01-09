@@ -1,127 +1,518 @@
-<!-- Banner Image -->
+// App.js
+import React, { useState, useEffect } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'react-native-fs';
+import Share from 'react-native-share';
+import { LineChart } from 'react-native-chart-kit';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  FlatList,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  Dimensions,
+  Modal
+} from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-<p align="center">
-  <a href="https://expo.dev/">
-    <img alt="expo sdk" height="128" src="./.github/resources/banner.png">
-    <h1 align="center">Expo</h1>
-  </a>
-</p>
+const Stack = createNativeStackNavigator();
+const Tab = createBottomTabNavigator();
 
-<p align="center">
-   <a aria-label="SDK version" href="https://www.npmjs.com/package/expo" target="_blank">
-    <img alt="Expo SDK version" src="https://img.shields.io/npm/v/expo.svg?style=flat-square&label=SDK&labelColor=000000&color=4630EB" />
-  </a>
-  <a aria-label="Chat or ask a question" href="https://chat.expo.dev" target="_blank">
-    <img alt="Chat or ask a question" src="https://img.shields.io/discord/695411232856997968.svg?style=flat-square&labelColor=000000&color=4630EB&logo=discord&logoColor=FFFFFF&label=Chat%20with%20us" />
-  </a>
-  <a aria-label="Expo is free to use" href="https://github.com/expo/expo/blob/main/LICENSE" target="_blank">
-    <img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-success.svg?style=flat-square&color=33CC12" target="_blank" />
-  </a>
-  <a aria-label="expo downloads" href="http://www.npmtrends.com/expo" target="_blank">
-    <img alt="Downloads" src="https://img.shields.io/npm/dm/expo.svg?style=flat-square&labelColor=gray&color=33CC12&label=Downloads" />
-  </a>
-</p>
+// شاشة قائمة الموظفين
+const EmployeesScreen = ({ navigation }) => {
+  const [employees, setEmployees] = useState([]);
+  const [newEmployee, setNewEmployee] = useState('');
 
-<p align="center">
-  <a aria-label="try expo with snack" href="https://snack.expo.dev"><b>Try Expo in the Browser</b></a>
-&ensp;•&ensp;
-  <a aria-label="expo documentation" href="https://docs.expo.dev">Read the Documentation</a>
-&ensp;•&ensp;
-  <a aria-label="expo documentation" href="https://expo.dev/blog">Learn more on our blog</a>
-&ensp;•&ensp;
-  <a aria-label="expo documentation" href="https://expo.canny.io/feature-requests">Request a feature</a>
-</p>
+  useEffect(() => {
+    loadEmployees();
+  }, []);
 
-<h6 align="center">Follow us on</h6>
-<p align="center">
-  <a aria-label="Follow @expo on X" href="https://x.com/intent/follow?screen_name=expo" target="_blank">
-    <img alt="Expo on X" src="https://img.shields.io/badge/X-000000?style=for-the-badge&logo=x&logoColor=white" target="_blank" />
-  </a>&nbsp;
-  <a aria-label="Follow @expo on GitHub" href="https://github.com/expo" target="_blank">
-    <img alt="Expo on GitHub" src="https://img.shields.io/badge/GitHub-222222?style=for-the-badge&logo=github&logoColor=white" target="_blank" />
-  </a>&nbsp;
-  <a aria-label="Follow @expo on Reddit" href="https://www.reddit.com/r/expo/" target="_blank">
-    <img alt="Expo on Reddit" src="https://img.shields.io/badge/Reddit-FF4500?style=for-the-badge&logo=reddit&logoColor=white" target="_blank" />
-  </a>&nbsp;
-  <a aria-label="Follow @expo on Bluesky" href="https://bsky.app/profile/expo.dev" target="_blank">
-    <img alt="Expo on LinkedIn" src="https://img.shields.io/badge/Bluesky-1DA1F2?style=for-the-badge&logo=bluesky&logoColor=white" target="_blank" />
-  </a>&nbsp;
-  <a aria-label="Follow @expo on LinkedIn" href="https://www.linkedin.com/company/expo-dev" target="_blank">
-    <img alt="Expo on LinkedIn" src="https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white" target="_blank" />
-  </a>
-</p>
+  const loadEmployees = async () => {
+    try {
+      const savedEmployees = await AsyncStorage.getItem('employees');
+      if (savedEmployees) {
+        setEmployees(JSON.parse(savedEmployees));
+      }
+    } catch (error) {
+      Alert.alert('خطأ', 'حدث خطأ في تحميل البيانات');
+    }
+  };
 
-## Introduction
+  const saveEmployees = async (data) => {
+    try {
+      await AsyncStorage.setItem('employees', JSON.stringify(data));
+    } catch (error) {
+      Alert.alert('خطأ', 'حدث خطأ في حفظ البيانات');
+    }
+  };
 
-Expo is an open-source platform for making universal native apps that run on Android, iOS, and the web. It includes a universal runtime and libraries that let you build native apps by writing React and JavaScript.
+  const addEmployee = () => {
+    if (newEmployee.trim()) {
+      const newEmployeeData = {
+        id: Date.now().toString(),
+        name: newEmployee,
+        notes: [],
+        averagePerformance: 0,
+        department: '',
+        position: ''
+      };
+      const updatedEmployees = [...employees, newEmployeeData];
+      setEmployees(updatedEmployees);
+      saveEmployees(updatedEmployees);
+      setNewEmployee('');
+    }
+  };
 
-This repository includes the Expo SDK, Modules API, Go app, CLI, Router, documentation, and various other supporting tools. [Expo Application Services (EAS)](https://expo.dev/eas) is a platform of hosted services that are deeply integrated with Expo open source tools. EAS helps you build, ship, and iterate on your app as an individual or a team.
+  const deleteEmployee = (employeeId) => {
+    Alert.alert(
+      'تأكيد الحذف',
+      'هل أنت متأكد من حذف هذا الموظف؟',
+      [
+        { text: 'إلغاء', style: 'cancel' },
+        {
+          text: 'حذف',
+          style: 'destructive',
+          onPress: async () => {
+            const updatedEmployees = employees.filter(emp => emp.id !== employeeId);
+            setEmployees(updatedEmployees);
+            await saveEmployees(updatedEmployees);
+          }
+        }
+      ]
+    );
+  };
 
-Read the [Expo Community Guidelines](https://expo.dev/guidelines) before interacting in the repository. Thank you for helping keep the Expo community open and welcoming!
+  return (
+    <View style={styles.container}>
+      <View style={styles.addEmployeeContainer}>
+        <TextInput
+          style={styles.input}
+          value={newEmployee}
+          onChangeText={setNewEmployee}
+          placeholder="اسم الموظف الجديد"
+          placeholderTextColor="#666"
+        />
+        <TouchableOpacity style={styles.addButton} onPress={addEmployee}>
+          <Icon name="plus" size={24} color="white" />
+        </TouchableOpacity>
+      </View>
 
-## Table of contents
+      <FlatList
+        data={employees}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <View style={styles.employeeCard}>
+            <TouchableOpacity
+              style={styles.employeeInfo}
+              onPress={() => navigation.navigate('EmployeeDetails', { employee: item })}
+            >
+              <Text style={styles.employeeName}>{item.name}</Text>
+              <Text style={styles.performanceText}>
+                متوسط الأداء: {item.averagePerformance.toFixed(1)} / 5
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.deleteButton}
+              onPress={() => deleteEmployee(item.id)}
+            >
+              <Icon name="delete" size={24} color="#ff4444" />
+            </TouchableOpacity>
+          </View>
+        )}
+      />
+    </View>
+  );
+};
 
-- [📚 Documentation](#-documentation)
-- [🗺 Project Layout](#-project-layout)
-- [🏅 Badges](#-badges)
-- [👏 Contributing](#-contributing)
-- [❓ FAQ](#-faq)
-- [💙 The Team](#-the-team)
-- [License](#license)
+// شاشة تفاصيل الموظف
+const EmployeeDetailsScreen = ({ route, navigation }) => {
+  const { employee } = route.params;
+  const [note, setNote] = useState('');
+  const [rating, setRating] = useState(5);
+  const [showRatingModal, setShowRatingModal] = useState(false);
 
-## 📚 Documentation
+  const addNote = async () => {
+    if (note.trim()) {
+      try {
+        const savedEmployees = await AsyncStorage.getItem('employees');
+        if (savedEmployees) {
+          const employees = JSON.parse(savedEmployees);
+          const updatedEmployees = employees.map(emp => {
+            if (emp.id === employee.id) {
+              const newNote = {
+                id: Date.now().toString(),
+                content: note,
+                date: new Date().toISOString().split('T')[0],
+                rating: rating
+              };
+              const updatedNotes = [...emp.notes, newNote];
+              return {
+                ...emp,
+                notes: updatedNotes,
+                averagePerformance: updatedNotes.reduce((acc, n) => acc + n.rating, 0) / updatedNotes.length
+              };
+            }
+            return emp;
+          });
+          await AsyncStorage.setItem('employees', JSON.stringify(updatedEmployees));
+          setNote('');
+          setRating(5);
+          navigation.setParams({ employee: updatedEmployees.find(emp => emp.id === employee.id) });
+        }
+      } catch (error) {
+        Alert.alert('خطأ', 'حدث خطأ في حفظ الملاحظة');
+      }
+    }
+  };
 
-<p>Learn about building and deploying universal apps <a aria-label="expo documentation" href="https://docs.expo.dev">in our official docs!</a></p>
+  const RatingModal = () => (
+    <Modal
+      transparent={true}
+      visible={showRatingModal}
+      onRequestClose={() => setShowRatingModal(false)}
+    >
+      <View style={styles.modalContainer}>
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>تقييم الأداء</Text>
+          <View style={styles.ratingContainer}>
+            {[1, 2, 3, 4, 5].map((value) => (
+              <TouchableOpacity
+                key={value}
+                style={[
+                  styles.ratingButton,
+                  rating === value && styles.selectedRating
+                ]}
+                onPress={() => setRating(value)}
+              >
+                <Text style={[
+                  styles.ratingButtonText,
+                  rating === value && styles.selectedRatingText
+                ]}>
+                  {value}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <TouchableOpacity
+            style={styles.modalButton}
+            onPress={() => setShowRatingModal(false)}
+          >
+            <Text style={styles.modalButtonText}>تم</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
 
-- [Getting Started](https://docs.expo.dev/)
-- [API Reference](https://docs.expo.dev/versions/latest/)
-- [Using Custom Native Modules](https://docs.expo.dev/workflow/customizing/)
+  return (
+    <ScrollView style={styles.container}>
+      <RatingModal />
+      
+      <View style={styles.noteInputContainer}>
+        <TextInput
+          style={styles.noteInput}
+          value={note}
+          onChangeText={setNote}
+          placeholder="أضف ملاحظة جديدة..."
+          multiline
+          placeholderTextColor="#666"
+        />
+        <View style={styles.noteActions}>
+          <TouchableOpacity
+            style={styles.ratingSelector}
+            onPress={() => setShowRatingModal(true)}
+          >
+            <Text style={styles.ratingText}>التقييم: {rating}/5</Text>
+            <Icon name="star" size={20} color="#FFD700" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.addButton} onPress={addNote}>
+            <Text style={styles.buttonText}>إضافة</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
-## 🗺 Project Layout
+      <FlatList
+        data={employee.notes.slice().reverse()}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <View style={styles.noteCard}>
+            <View style={styles.noteHeader}>
+              <Text style={styles.dateText}>{item.date}</Text>
+              <View style={styles.ratingBadge}>
+                <Text style={styles.ratingBadgeText}>{item.rating}/5</Text>
+                <Icon name="star" size={16} color="#FFD700" />
+              </View>
+            </View>
+            <Text style={styles.noteContent}>{item.content}</Text>
+          </View>
+        )}
+      />
+    </ScrollView>
+  );
+};
 
-- [`packages`](/packages) All the source code for Expo modules, if you want to edit a library or just see how it works this is where you'll find it.
-- [`apps`](/apps) This is where you can find Expo projects which are linked to the development modules. You'll do most of your testing in here.
-- [`apps/expo-go`](/apps/expo-go) This is where you can find the source code for Expo Go.
-- [`apps/expo-go/ios/Exponent.xcworkspace`](/apps/expo-go/ios) is the Xcode workspace. When developing iOS, always open this instead of `Exponent.xcodeproj` because the workspace also loads the CocoaPods dependencies.
-- [`docs`](/docs) The source code for **https://docs.expo.dev**
-- [`templates`](/templates) The template projects you get when you run `npx create-expo-app`
-- [`react-native-lab`](/react-native-lab) This is our fork of `react-native` used to build Expo Go.
-- [`guides`](/guides) In-depth tutorials for advanced topics like contributing to the client.
-- [`tools`](/tools) contain build and configuration tools.
-- [`template-files`](/template-files) contains templates for files that require private keys. They are populated using the keys in `template-files/keys.json`.
-- [`template-files/ios/dependencies.json`](/template-files/ios/dependencies.json) specifies the CocoaPods dependencies of the app.
+// شاشة التقارير
+const ReportsScreen = () => {
+  const [employees, setEmployees] = useState([]);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+  
+  useEffect(() => {
+    loadEmployees();
+  }, []);
 
-## 🏅 Badges
+  const loadEmployees = async () => {
+    try {
+      const savedEmployees = await AsyncStorage.getItem('employees');
+      if (savedEmployees) {
+        setEmployees(JSON.parse(savedEmployees));
+      }
+    } catch (error) {
+      Alert.alert('خطأ', 'حدث خطأ في تحميل البيانات');
+    }
+  };
 
-Let everyone know your app can be run instantly in the _Expo Go_ app!
-<br/>
+  const getMonthlyStats = (employee) => {
+    const monthNotes = employee.notes.filter(note => note.date.startsWith(selectedMonth));
+    const totalNotes = monthNotes.length;
+    const averageRating = totalNotes > 0 
+      ? monthNotes.reduce((acc, note) => acc + note.rating, 0) / totalNotes 
+      : 0;
+    const daysWorked = new Set(monthNotes.map(note => note.date)).size;
+    
+    return {
+      totalNotes,
+      averageRating,
+      daysWorked,
+      performanceData: monthNotes.map(note => ({
+        date: note.date,
+        rating: note.rating
+      }))
+    };
+  };
 
-[![runs with Expo Go](https://img.shields.io/badge/Runs%20with%20Expo%20Go-000.svg?style=flat-square&logo=EXPO&labelColor=f3f3f3&logoColor=000)](https://expo.dev/client)
+  const exportReport = async () => {
+    try {
+      const reportContent = employees.map(employee => {
+        const stats = getMonthlyStats(employee);
+        return `الموظف: ${employee.name}\nعدد الملاحظات: ${stats.totalNotes}\nعدد الأيام العاملة: ${stats.daysWorked}\nمتوسط التقييم: ${stats.averageRating.toFixed(2)}\n`;
+      }).join('\n\n');
+      
+      const path = `${FileSystem.DocumentDirectoryPath}/report.txt`;
+      await FileSystem.writeFile(path, reportContent);
+      await Share.open({ url: `file://${path}` });
+    } catch (error) {
+      Alert.alert('خطأ', 'حدث خطأ أثناء تصدير التقرير');
+    }
+  };
 
-[![runs with Expo Go](https://img.shields.io/badge/Runs%20with%20Expo%20Go-4630EB.svg?style=flat-square&logo=EXPO&labelColor=f3f3f3&logoColor=000)](https://expo.dev/client)
+  return (
+    <View style={styles.container}>
+      <Text style={styles.reportTitle}>تقارير الأداء الشهرية</Text>
+      <View style={styles.chartContainer}>
+        <LineChart
+          data={{
+            labels: ['يوم 1', 'يوم 2', 'يوم 3', 'يوم 4'],
+            datasets: [
+              {
+                data: [3, 4, 2, 5],
+                strokeWidth: 2
+              }
+            ]
+          }}
+          width={Dimensions.get('window').width - 30}
+          height={220}
+          chartConfig={{
+            backgroundColor: '#fff',
+            backgroundGradientFrom: '#fff',
+            backgroundGradientTo: '#fff',
+            decimalPlaces: 2,
+            color: (opacity = 1) => `rgba(0, 0, 255, ${opacity})`,
+            labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`
+          }}
+          style={styles.chart}
+        />
+      </View>
+      <TouchableOpacity style={styles.exportButton} onPress={exportReport}>
+        <Text style={styles.buttonText}>تصدير التقرير</Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
 
-```md
-[![runs with Expo Go](https://img.shields.io/badge/Runs%20with%20Expo%20Go-000.svg?style=flat-square&logo=EXPO&labelColor=f3f3f3&logoColor=000)](https://expo.dev/client)
+// الإعدادات والتنسيقات
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+    padding: 10,
+  },
+  addEmployeeContainer: {
+    flexDirection: 'row',
+    marginBottom: 20,
+    alignItems: 'center'
+  },
+  input: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 5,
+    padding: 10,
+    marginRight: 10,
+  },
+  addButton: {
+    backgroundColor: '#2e8b57',
+    padding: 10,
+    borderRadius: 5,
+  },
+  employeeCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 10,
+    borderBottomWidth: 1,
+    borderColor: '#eee',
+  },
+  employeeInfo: {
+    flex: 1,
+  },
+  employeeName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  performanceText: {
+    color: '#777',
+  },
+  deleteButton: {
+    marginLeft: 10,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 5,
+    width: '80%',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-evenly',
+    marginBottom: 20,
+  },
+  ratingButton: {
+    padding: 10,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 5,
+  },
+  selectedRating: {
+    backgroundColor: '#FFD700',
+  },
+  ratingButtonText: {
+    fontSize: 18,
+  },
+  selectedRatingText: {
+    color: 'white',
+  },
+  modalButton: {
+    backgroundColor: '#2e8b57',
+    padding: 10,
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: 'white',
+    fontSize: 16,
+  },
+  noteInputContainer: {
+    marginBottom: 20,
+  },
+  noteInput: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    padding: 10,
+    borderRadius: 5,
+    marginBottom: 10,
+  },
+  noteActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  ratingSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  ratingText: {
+    marginRight: 10,
+    fontSize: 16,
+  },
+  addButton: {
+    backgroundColor: '#2e8b57',
+    padding: 10,
+    borderRadius: 5,
+  },
+  noteCard: {
+    marginBottom: 15,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 5,
+  },
+  noteHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 5,
+  },
+  dateText: {
+    fontSize: 14,
+    color: '#777',
+  },
+  ratingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  ratingBadgeText: {
+    fontSize: 14,
+    color: '#FFD700',
+  },
+  noteContent: {
+    fontSize: 16,
+    marginTop: 5,
+  },
+  reportTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  chartContainer: {
+    marginBottom: 20,
+  },
+  chart: {
+    borderRadius: 5,
+  },
+  exportButton: {
+    backgroundColor: '#2e8b57',
+    padding: 10,
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+});
 
-[![runs with Expo Go](https://img.shields.io/badge/Runs%20with%20Expo%20Go-4630EB.svg?style=flat-square&logo=EXPO&labelColor=f3f3f3&logoColor=000)](https://expo.dev/client)
-```
-
-## 👏 Contributing
-
-If you like Expo and want to help make it better then check out our [contributing guide](/CONTRIBUTING.md)! Check out the [CLI package](https://github.com/expo/expo/tree/main/packages/%40expo/cli) to work on the Expo CLI.
-
-## ❓ FAQ
-
-If you have questions about Expo and want answers, then check out our [Frequently Asked Questions](https://docs.expo.dev/faq/)!
-
-If you still have questions you can ask them on our [Discord and Forums](https://chat.expo.dev) or X [@expo](https://x.com/expo).
-
-## 💙 The Team
-
-Curious about who makes Expo? Here are our [team members](https://expo.dev/about)!
-
-## License
-
-The Expo source code is made available under the [MIT license](LICENSE). Some of the dependencies are licensed differently, with the BSD license, for example.
-
-<img alt="Star the Expo repo on GitHub to support the project" src="https://user-images.githubusercontent.com/9664363/185428788-d762fd5d-97b3-4f59-8db7-f72405be9677.gif" width="50%">
+export default App;
